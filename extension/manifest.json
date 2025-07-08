@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Gnosis",
+  "version": "1.0",
+  "description": "Captures page title, URL, and text content and sends to a local server.",
+  "action": {},
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "exclude_globs": ["http://localhost:8000/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost:8000/*"],
+      "js": ["sidepanel_script.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["sidePanel", "tabs", "storage", "runtime"],
+  "host_permissions": [
+    "http://localhost:9000/*",
+    "http://localhost:3000/*",
+    "http://localhost:11434/*"
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+B",
+        "mac": "Command+B"
+      }
+    }
+  }
+}

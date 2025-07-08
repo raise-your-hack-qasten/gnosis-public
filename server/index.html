@@ -1,0 +1,161 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mem0 Memory Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-md mx-auto p-4">
+    <h1 class="text-2xl font-bold text-center mb-4">Mem0 Memory Manager</h1>
+    <form id="add-form" class="flex mb-4">
+      <input id="newContent" type="text" placeholder="Enter new memory..." class="flex-1 border rounded px-2 py-1" />
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">Add</button>
+    </form>
+    <ul id="memory-list" class="space-y-2"></ul>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const memoryList = document.getElementById('memory-list');
+      const addForm = document.getElementById('add-form');
+      const newContentInput = document.getElementById('newContent');
+      function getMemoryContent(item) {
+        if ('memory' in item) return item.memory;
+        if ('text' in item) return item.text;
+        if ('data' in item && 'memory' in item.data) return item.data.memory;
+        return '';
+      }
+      function createMemoryElement(item) {
+        const id = item.id;
+        const content = getMemoryContent(item);
+        const li = document.createElement('li');
+        li.className = 'bg-gray-100 p-2 rounded';
+        const staticDiv = document.createElement('div');
+        staticDiv.className = 'flex justify-between items-center';
+        const textSpan = document.createElement('span');
+        textSpan.textContent = content;
+        textSpan.className = 'text-gray-800';
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'flex space-x-2';
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = 'bg-yellow-500 text-white px-2 py-1 rounded text-sm';
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = 'bg-red-500 text-white px-2 py-1 rounded text-sm';
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+        staticDiv.appendChild(textSpan);
+        staticDiv.appendChild(actionsDiv);
+        const editDiv = document.createElement('div');
+        editDiv.className = 'flex items-center space-x-2 hidden';
+        const editInput = document.createElement('input');
+        editInput.type = 'text';
+        editInput.value = content;
+        editInput.className = 'flex-1 border px-2 py-1 rounded';
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save';
+        saveBtn.className = 'bg-green-500 text-white px-3 py-1 rounded text-sm';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.className = 'bg-gray-300 text-black px-3 py-1 rounded text-sm';
+        editDiv.appendChild(editInput);
+        editDiv.appendChild(saveBtn);
+        editDiv.appendChild(cancelBtn);
+        li.appendChild(staticDiv);
+        li.appendChild(editDiv);
+        editBtn.addEventListener('click', () => {
+          editInput.value = textSpan.textContent;
+          staticDiv.classList.add('hidden');
+          editDiv.classList.remove('hidden');
+          editInput.focus();
+        });
+        cancelBtn.addEventListener('click', () => {
+          editDiv.classList.add('hidden');
+          staticDiv.classList.remove('hidden');
+        });
+        saveBtn.addEventListener('click', () => {
+          const newText = editInput.value.trim();
+          if (!newText) return;
+          fetch('/memories/' + encodeURIComponent(id), {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ content: newText })
+          })
+          .then(res => res.json())
+          .then(data => {
+            let updatedContent = newText;
+            if (data) {
+              if (data.memory) updatedContent = data.memory;
+              else if (data.text) updatedContent = data.text;
+              else if (data.data && data.data.memory) updatedContent = data.data.memory;
+            }
+            textSpan.textContent = updatedContent;
+            editDiv.classList.add('hidden');
+            staticDiv.classList.remove('hidden');
+          })
+          .catch(err => {
+            console.error('Error updating memory:', err);
+          });
+        });
+        deleteBtn.addEventListener('click', () => {
+          fetch('/memories/' + encodeURIComponent(id), { method: 'DELETE' })
+          .then(res => {
+            if (res.ok) {
+              li.remove();
+            } else {
+              console.error('Failed to delete memory:', res.statusText);
+            }
+          })
+          .catch(err => {
+            console.error('Error deleting memory:', err);
+          });
+        });
+        return li;
+      }
+      fetch('/memories')
+        .then(res => res.json())
+        .then(data => {
+          const items = Array.isArray(data) ? data : [data];
+          items.forEach(item => {
+            const li = createMemoryElement(item);
+            memoryList.appendChild(li);
+          });
+        })
+        .catch(err => {
+          console.error('Error fetching memories:', err);
+        });
+      addForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const content = newContentInput.value.trim();
+        if (!content) return;
+        fetch('/memories', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ content: content })
+        })
+        .then(res => {
+          if (!res.ok) {
+            return res.json().then(errData => { 
+              throw new Error(errData.error || 'Failed to add memory'); 
+            });
+          }
+          return res.json();
+        })
+        .then(data => {
+          const items = Array.isArray(data) ? data : [data];
+          items.forEach(item => {
+            const li = createMemoryElement(item);
+            memoryList.appendChild(li);
+          });
+          newContentInput.value = '';
+        })
+        .catch(err => {
+          console.error('Error adding memory:', err);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

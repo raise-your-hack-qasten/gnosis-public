@@ -1,0 +1,4 @@
+.venv
+mem0_db
+server.log
+__pycache__
